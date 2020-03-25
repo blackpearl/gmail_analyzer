@@ -1,6 +1,8 @@
 from __future__ import print_function
 import pickle
 import os.path
+
+from googleapiclient import errors
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -35,15 +37,34 @@ def main():
     service = build('gmail', 'v1', credentials=creds)
 
     # Call the Gmail API
-    results = service.users().labels().list(userId='me').execute()
-    labels = results.get('labels', [])
+    # results = service.users().labels().list(userId='me').execute()
+    # labels = results.get('labels', [])
+    #
+    # if not labels:
+    #     print('No labels found.')
+    # else:
+    #     print('Labels:')
+    #     for label in labels:
+    #         print(label['name'])
 
-    if not labels:
-        print('No labels found.')
-    else:
-        print('Labels:')
-        for label in labels:
-            print(label['name'])
+    try:
+        response = service.users().messages().list(userId="me",
+                                                   labelIds="IMPORTANT").execute()
+        messages = []
+        if 'messages' in response:
+            messages.extend(response['messages'])
+
+        while 'nextPageToken' in response:
+            page_token = response['nextPageToken']
+            response = service.users().messages().list(userId="me",
+                                                       labelIds="IMPORTANT",
+                                                       pageToken=page_token).execute()
+            messages.extend(response['messages'])
+
+        print (messages)
+    except errors.HttpError as error:
+        print ("An error occurred")
+
 
 
 if __name__ == '__main__':
